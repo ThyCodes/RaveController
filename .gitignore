@@ -1,0 +1,4 @@
+bin/videos/*
+*.ini
+*.cfg
+.venv/*
