@@ -8,6 +8,8 @@ import obsws_python as obs
 import shutil
 import re
 import json
+import copy
+import time
 
 
 VIDEO_DIR = os.path.join(os.getcwd(), "bin/videos")
@@ -22,6 +24,10 @@ config = configparser.ConfigParser()
 config.read("config.toml")
 CL = obs.ReqClient()
 
+if not os.path.isfile(VIDEO_JSON):
+    with open(VIDEO_JSON, "w") as f:
+        f.write("")
+
 # client.run(config["DEFAULT"]["token"])
 
 # https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
@@ -31,14 +37,16 @@ def add_to_json(filename):
     Adds an entry to the JSON file keeping track of what order the videos are to be played in.
     Adds the file to the end of the list.
     """
-    with open(VIDEO_JSON, "w") as f:
-        try:
+    try:
+        with open(VIDEO_JSON, "r") as f:
             data = json.load(f)
-            next_index = str(len(data.keys()) - 1)
+            next_index = str(len(data.keys()))
             data[next_index] = filename
-        except:
+    except Exception as e:
+            print(e)
             print("Video order JSON file not found or was empty, creating...")
             data = {"0":filename}
+    with open(VIDEO_JSON, "w") as f:
         json.dump(data, f, indent=4)
 
 def set_scene_brb():
@@ -71,8 +79,8 @@ def change_scene():
 
 def archive_video():
     archive_dir = os.path.join(VIDEO_DIR, "archive")
-    curr_video = os.path.join(f"{VIDEO_DIR}", CURR_SET)
-    now = datetime.now().strftime()
+    curr_video = os.path.join(f"{VIDEO_DIR}", f"{CURR_SET}.mp4")
+    now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     archived_video = os.path.join(f"{archive_dir}", f"{now}.mp4")
     shutil.move(curr_video, archived_video)
     # Rename File to current time and move to archive folder
@@ -88,22 +96,18 @@ def download_video(url:str, name:str):
     """
     cur_dir = os.getcwd()
     vid_dir = os.path.join(cur_dir, VIDEO_DIR)
-    largest_index = -1
+    has_first = False
     for file in os.listdir(vid_dir):
         if file.endswith("mp4"):
-            try:
-                f_index = int(file.split("_")[0])
-            except ValueError:
-                print("WARNING: Improperly named mp4 in the video file! Please delete or rename!")
-                continue
-            if int(f_index) > largest_index:
-                largest_index = f_index
+            if CURR_SET in file:
+                has_first = True
 
-    index = largest_index + 1
-    if index == 0:
-        name = CURR_SET
+    
+    if not has_first:
+        fname = f"{CURR_SET}.mp4"
+    else:
+        fname = f"{name}.mp4"
 
-    fname = f"{name}.mp4"
     opts = {
         'format_sort': ["res:1080","ext:mp4:m4a"],
         "outtmpl": os.path.join(vid_dir, fname)
@@ -115,8 +119,9 @@ def download_video(url:str, name:str):
         print("Error downloading youtube video, are you sure that is a valid, visible URL?")
         #TODO: Actual error processing in case of invalid URL
         return
-    
-    return fname
+    with open(VIDEO_JSON, "r") as f:
+        if not fname in f.read():
+            add_to_json(fname)
 
 def next_set():
     """
@@ -126,14 +131,36 @@ def next_set():
         data = json.load(f)
 
     set_scene_brb()
+    time.sleep(1)
     archive_video()
     next_vid_path = os.path.join(VIDEO_DIR, data["1"])
     current_vid_path = os.path.join(VIDEO_DIR, f"{CURR_SET}.mp4")
     shutil.move(next_vid_path, current_vid_path)
     change_scene()
+    # New video is loaded, now we rebuild the JSON with the new info
+    data_new = copy.deepcopy(data)
+    data_new["0"] = f"{CURR_SET}.mp4"
+    del data_new["1"]
+    final_entry = len(data_new.keys())
+    for key in list(data_new.keys())[1:]:
+        index_int = int(key)
+        data_new[str(index_int-1)] = data_new[key]
+        print(f"Index {index_int} moved up")
+    if final_entry != 1:
+        del data_new[str(final_entry)]
+    
+    with open(VIDEO_JSON, "w") as f:
+        json.dump(data_new, f, indent=4)
 
 if __name__ == "__main__":
     # change_scene("TestBRB")
-    change_scene()
-    file = download_video("https://www.youtube.com/watch?v=gXIs--FDeLA", "testFile")
-    add_to_json(file)
+    download_video("https://www.youtube.com/watch?v=Bjt7mDVCLtk", "testFile1")
+    download_video("https://www.youtube.com/watch?v=JP7zsdorPLI", "testFile2")
+    download_video("https://www.youtube.com/watch?v=TUzvD4XjBBo", "testFile3")
+    download_video("https://www.youtube.com/watch?v=8Bm3le9s3-A", "testFile4")
+    pause = input("Waiting...")
+    next_set()
+    pause = input("Waiting...")
+    next_set()
+    pause = input("Waiting...")
+    next_set()
