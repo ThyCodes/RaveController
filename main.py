@@ -47,6 +47,7 @@ def set_scene_brb():
     """
     swap_scene = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
     CL.set_current_program_scene(swap_scene)
+    return
 
 def change_scene():
     """
