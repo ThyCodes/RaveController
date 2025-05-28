@@ -4,3 +4,4 @@ bin/videos/*
 .venv/*
 *.toml
 *.json
+__pycache__/*
