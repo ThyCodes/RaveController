@@ -29,13 +29,12 @@ class video_order:
     All that is stored is the filenames themselves, without the extension.
     Assumes the current_set.mp4 file does not need to be tracked since it's always "first"
     """
-    def __init__(self, from_file=False):
+    def __init__(self):
         self.files = []
-        if from_file:
-            try:
-                self.files = self.read().split(",")
-            except FileNotFoundError:
-                print("Video order not found! Using empty list!")
+        try:
+            self.files = self.read().split(",")
+        except FileNotFoundError:
+            print("Video order not found! Using empty list!")
 
     def index_of(self, key:str) -> int:
         try:

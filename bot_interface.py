@@ -19,6 +19,7 @@ Optional Goals:
 - Allow for scene management via bot
 - Allow for custom text to display on the BRB scene
 - Allow for video rewinding or fast forwarding
+- Partial filename recognition
 
 Stretch Goals:
 - Show video state via embed
@@ -42,12 +43,23 @@ client = discord.Client(intents=intents)
 config = configparser.ConfigParser()
 config.read("config.toml")
 
+# If you have quotes in your role sorry
+# But that's dumb :3
+STAFF_ROLES = re.sub(r"[\"]", "", config["DEFAULT"]["roles"]).split(",")
+STAFF_ROLES_STR = ""
+for role in STAFF_ROLES:
+    STAFF_ROLES[STAFF_ROLES.index(role)] = role.strip()
+    if STAFF_ROLES.index(role) == len(STAFF_ROLES)-1:
+        STAFF_ROLES_STR += role
+    else:
+        STAFF_ROLES_STR += f"{role},"
+
 # Emoji List
 EMOJI_stop_button = str("\U000023F9" + "\U0000FE0F")
 EMOJI_start_button = str("\U000025B6" + "\U0000FE0F")
 EMOJI_pause_button = str("\U000023F8" + "\U0000FE0F")
 # Yes I yanked this right out of the examples on discord.py's github. Sue me. (dont)
-class PersistentViewBot(commands.Bot):
+class PersistentViewBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
@@ -119,28 +131,33 @@ class VideoControls(discord.ui.View):
 
 bot = PersistentViewBot()
 @bot.command()
-async def test(ctx:commands.Context):
-    await ctx.send("BlurgleGurgleldfnmrueg", view=OBSControls())
+async def test(interaction: discord.Interaction):
+    await interaction.response.send_message("BlurgleGurgleldfnmrueg", view=OBSControls())
 
 @bot.command()
-async def test2(ctx:commands.Context):
-    await ctx.send("FlingleDingle", view=VideoControls())
+async def test2(interaction: discord.Interaction):
+    await interaction.response.send_message("FlingleDingle", view=VideoControls())
 
-@bot.hybrid_command()
-async def add_video(ctx:commands.Context, url:str=None, filename:str="Change Me!"):
+@bot.tree.command(name="ControlPanel", description="Create the bot's control panel in this channel.")
+@bot.has_any_roles(STAFF_ROLES_STR)
+async def control_panel(interaction:discord.Interaction):
+    pass
+
+@bot.tree.command(name="AddVideo", description="Add a video to the player's queue")
+async def add_video(interaction:discord.Interaction, url:str=None, filename:str="Change Me!"):
     if url == None:
-        await ctx.reply("Sorry, a URL is required to download the video! Tends to help, yknow.", ephemeral=True)
+        await interaction.response.send_message("Sorry, a URL is required to download the video! Tends to help, yknow.", ephemeral=True)
         return
-    msg = await ctx.reply(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
+    msg = await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
     try:
         place = obs_controller.download_video(url, filename)
         await msg.delete()
         if place >= 0:
-            await ctx.reply(f"Video downloaded! It is number {place+1} in the queue!", ephemeral=True)
+            await interaction.response.send_message(f"Video downloaded! It is number {place+1} in the queue!", ephemeral=True)
         else:
-            await ctx.reply(f"Video downloaded! It's loaded and ready to play!", ephemeral=True)
+            await interaction.response.send_message(f"Video downloaded! It's loaded and ready to play!", ephemeral=True)
     except:
-        await ctx.reply(f"Something went wrong with the video download, are you sure you gave it a unique filename?")
+        await interaction.response.send_message(f"Something went wrong with the video download, are you sure you gave it a unique filename?")
 
 
 
