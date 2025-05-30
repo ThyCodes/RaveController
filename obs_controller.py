@@ -123,6 +123,16 @@ def change_scene():
     except obs.error.OBSSDKRequestError:
         print("Error processing the source names in your config.toml file. Make sure they exist and there isn't punctuation or non-english characters!")
 
+def start_stream():
+    set_scene_brb()
+    CL.start_stream()
+
+def stop_stream():
+    CL.stop_stream()
+
+def get_set_info():
+    info = CL.get_media_input_status("Set").media_cursor
+
 def archive_video():
     curr_video = os.path.join(f"{VIDEO_DIR}", f"{CURR_SET}.mp4")
     now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
@@ -165,9 +175,12 @@ def download_video(url:str, name:str):
         #TODO: Actual error processing in case of invalid URL
         return
     
-    #TODO: Add video title to list
     if has_first:
         VO.add_video(fname)
+    else:
+        return -1
+
+    return VO.index_of(fname)
 
 def next_set():
     """

@@ -6,6 +6,29 @@ import asyncio
 from discord.ext import commands
 import re
 
+# https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
+
+"""
+PRIMARY GOALS:
+- Allow for OBS and Video to be controlled via bot
+- Allow for download of YouTube videos
+- Allow for redordering of downloaded videos
+- SIMPLE. SIMPLE. S I M P L E.
+
+Optional Goals:
+- Allow for scene management via bot
+- Allow for custom text to display on the BRB scene
+- Allow for video rewinding or fast forwarding
+
+Stretch Goals:
+- Show video state via embed
+- Allow for direct video upload
+- Show screenshots of the current file structure
+- Show screenshots of the current OBS setup
+
+"""
+
+
 VIDEO_DIR = os.path.join(os.getcwd(), "bin/videos")
 ARCHIVE_DIR = os.path.join(VIDEO_DIR, "archive")
 if not os.path.exists(ARCHIVE_DIR):
@@ -19,7 +42,10 @@ client = discord.Client(intents=intents)
 config = configparser.ConfigParser()
 config.read("config.toml")
 
-
+# Emoji List
+EMOJI_stop_button = str("\U000023F9" + "\U0000FE0F")
+EMOJI_start_button = str("\U000025B6" + "\U0000FE0F")
+EMOJI_pause_button = str("\U000023F8" + "\U0000FE0F")
 # Yes I yanked this right out of the examples on discord.py's github. Sue me. (dont)
 class PersistentViewBot(commands.Bot):
     def __init__(self):
@@ -29,12 +55,13 @@ class PersistentViewBot(commands.Bot):
         super().__init__(intents=intents, command_prefix="!")
 
     async def setup_hook(self) -> None:
-        self.add_view(PersistentView())
+        self.add_view(OBSControls())
+        self.add_view(VideoControls())
 
     async def on_ready(self):
         print(f"Logged in as {self.user} and ready to FUCK THE HOUSE UP BAYBEEEEEEEEEE\n--------")
 
-class PersistentView(discord.ui.View):
+class OBSControls(discord.ui.View):
     """
     Class for creating persistent buttons so the discord bot will function even if a reboot needs to happen mid set
     Hopefully doesnt need to happen! But just in case.
@@ -44,31 +71,77 @@ class PersistentView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
+
+    # TODO:
+    # Possibly store the current cursor location in MS
+    # Just in case this button is clicked accidentally
     @discord.ui.button(label="Swap Scene", style=discord.ButtonStyle.gray, custom_id='persistent_view:swapscene')
     async def swap_scene(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.change_scene()
         await interaction.response.send_message("Scene swapped!", ephemeral=True)
 
+    # TODO:
+    # Maybe make this just a command that displays everything else?
+    @discord.ui.button(label=f"{EMOJI_start_button} Start Stream", style=discord.ButtonStyle.green, custom_id='persistent_view:startstream')
+    async def start_stream(self, interaction: discord.Interaction, button: discord.ui.Button):
+        obs_controller.start_stream()
+        await interaction.response.send_message("Starting stream...", ephemeral=True)
+
+    
+    @discord.ui.button(label=f"{EMOJI_stop_button} Stop Stream", style=discord.ButtonStyle.red, custom_id='persistent_view:stopstream')
+    async def stop_stream(self, interaction: discord.Interaction, button: discord.ui.Button):
+        obs_controller.stop_stream()
+        await interaction.response.send_message("Stream stopped!", ephemeral=True)
+
+class VideoControls(discord.ui.View):
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
     @discord.ui.button(label="Next Set", style=discord.ButtonStyle.blurple, custom_id='persistent_view:nextset')
     async def next_set(self, interaction: discord.Interaction, button: discord.ui.Button):
-        obs_controller.next_set()
-        await interaction.response.send_message("Next set loading now!", ephemeral=True)
+        try:
+            obs_controller.next_set()
+        except IndexError:
+            await interaction.response.send_message("This is the final video in the queue!")
+            return
+        await interaction.response.send_message("Next set playing now!", ephemeral=True)
 
-    @discord.ui.button(label="Play", style=discord.ButtonStyle.green, custom_id='persistent_view:play')
+    @discord.ui.button(label=f"{EMOJI_start_button} Play", style=discord.ButtonStyle.green, custom_id='persistent_view:play')
     async def resume_set(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.resume_set()
         await interaction.response.send_message("Set Resumed!", ephemeral=True)
 
-    @discord.ui.button(label="Pause", style=discord.ButtonStyle.red, custom_id='persistent_view:pause')
+    @discord.ui.button(label=f"{EMOJI_pause_button} Pause", style=discord.ButtonStyle.red, custom_id='persistent_view:pause')
     async def pause_set(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.pause_set()
         await interaction.response.send_message("Set Paused!", ephemeral=True)
 
-
 bot = PersistentViewBot()
 @bot.command()
 async def test(ctx:commands.Context):
-    await ctx.send("BlurgleGurgleldfnmrueg", view=PersistentView())
+    await ctx.send("BlurgleGurgleldfnmrueg", view=OBSControls())
+
+@bot.command()
+async def test2(ctx:commands.Context):
+    await ctx.send("FlingleDingle", view=VideoControls())
+
+@bot.hybrid_command()
+async def add_video(ctx:commands.Context, url:str=None, filename:str="Change Me!"):
+    if url == None:
+        await ctx.reply("Sorry, a URL is required to download the video! Tends to help, yknow.", ephemeral=True)
+        return
+    msg = await ctx.reply(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
+    try:
+        place = obs_controller.download_video(url, filename)
+        await msg.delete()
+        if place >= 0:
+            await ctx.reply(f"Video downloaded! It is number {place+1} in the queue!", ephemeral=True)
+        else:
+            await ctx.reply(f"Video downloaded! It's loaded and ready to play!", ephemeral=True)
+    except:
+        await ctx.reply(f"Something went wrong with the video download, are you sure you gave it a unique filename?")
+
 
 
 
