@@ -62,7 +62,7 @@ EMOJI_pause_button = str("\U000023F8" + "\U0000FE0F")
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = discord.Client(intents=intents, command_prefix="!")
+bot = commands.Bot(intents=intents, command_prefix="!")
 
 @bot.event
 async def setup_hook() -> None:
@@ -137,12 +137,12 @@ async def test(interaction: discord.Interaction):
 async def test2(interaction: discord.Interaction):
     await interaction.response.send_message("FlingleDingle", view=VideoControls())
 
-@bot.tree.command(name="ControlPanel", description="Create the bot's control panel in this channel.")
+@bot.tree.command(name="controlpanel", description="Create the bot's control panel in this channel.")
 # @bot.has_any_roles(STAFF_ROLES_STR)
 async def control_panel(interaction:discord.Interaction):
     pass
 
-@bot.tree.command(name="AddVideo", description="Add a video to the player's queue")
+@bot.tree.command(name="addvideo", description="Add a video to the player's queue")
 async def add_video(interaction:discord.Interaction, url:str=None, filename:str="Change Me!"):
     if url == None:
         await interaction.response.send_message("Sorry, a URL is required to download the video! Tends to help, yknow.", ephemeral=True)

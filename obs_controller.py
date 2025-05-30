@@ -89,7 +89,7 @@ class video_order:
         """
         file = os.path.join(VIDEO_DIR, "list.txt")
         with open(file, "r") as f:
-            return f.read(f)
+            return f.read()
 
 VO = video_order()
 
