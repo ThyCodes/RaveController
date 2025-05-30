@@ -154,9 +154,10 @@ async def add_video(interaction:discord.Interaction, url:str=None, filename:str=
     if url == None:
         await interaction.response.send_message("Sorry, a URL is required to download the video! Tends to help, yknow.", ephemeral=True)
         return
-    msg = await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
+    msg_id = await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True).message_id
     try:
         place = obs_controller.download_video(url, filename)
+        msg = interaction.channel.fetch_message(msg_id)
         if place >= 0:
             await msg.edit(f"Video downloaded! It is number {place+1} in the queue!", ephemeral=True)
         else:
