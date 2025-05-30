@@ -184,9 +184,11 @@ def download_video(url:str, name:str):
     
     if has_first:
         VO.add_video(fname)
+        VO.write()
     else:
         return -1
 
+    
     return VO.index_of(fname)
 
 def next_set():
