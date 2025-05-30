@@ -152,7 +152,7 @@ def archive_video():
     # Gotta figure out that structure first
     # TODO: Come back to this
 
-def download_video(url:str, name:str):
+async def download_video(url:str, name:str):
     """
     Downloads the youtube video passed in via URL, gives it an index and a name.
     The name wont have to be unique but yknow, it should be for ease of looking up.
@@ -215,17 +215,17 @@ def resume_set():
 
 if __name__ == "__main__":
     # change_scene("TestBRB")
-    download_video("https://www.youtube.com/watch?v=Bjt7mDVCLtk", "testFile1")
-    download_video("https://www.youtube.com/watch?v=JP7zsdorPLI", "testFile2")
-    download_video("https://www.youtube.com/watch?v=TUzvD4XjBBo", "testFile3")
-    download_video("https://www.youtube.com/watch?v=8Bm3le9s3-A", "testFile4")
-    VO.write()
-    pause = input("Waiting...")
-    next_set()
-    VO.write()
-    pause = input("Waiting...")
-    next_set()
-    VO.write()
-    pause = input("Waiting...")
-    next_set()
+    # download_video("https://www.youtube.com/watch?v=Bjt7mDVCLtk", "testFile1")
+    # download_video("https://www.youtube.com/watch?v=JP7zsdorPLI", "testFile2")
+    # download_video("https://www.youtube.com/watch?v=TUzvD4XjBBo", "testFile3")
+    # download_video("https://www.youtube.com/watch?v=8Bm3le9s3-A", "testFile4")
+    # VO.write()
+    # pause = input("Waiting...")
+    # next_set()
+    # VO.write()
+    # pause = input("Waiting...")
+    # next_set()
+    # VO.write()
+    # pause = input("Waiting...")
+    # next_set()
     VO.write()
