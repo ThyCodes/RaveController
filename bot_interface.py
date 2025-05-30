@@ -59,20 +59,19 @@ config.read("config.toml")
 EMOJI_stop_button = str("\U000023F9" + "\U0000FE0F")
 EMOJI_start_button = str("\U000025B6" + "\U0000FE0F")
 EMOJI_pause_button = str("\U000023F8" + "\U0000FE0F")
-# Yes I yanked this right out of the examples on discord.py's github. Sue me. (dont)
-class PersistentViewBot(discord.Client):
-    def __init__(self):
-        intents = discord.Intents.default()
-        intents.message_content = True
 
-        super().__init__(intents=intents, command_prefix="!")
+intents = discord.Intents.default()
+intents.message_content = True
+bot = discord.Client(intents=intents, command_prefix="!")
 
-    async def setup_hook(self) -> None:
-        self.add_view(OBSControls())
-        self.add_view(VideoControls())
+@bot.event
+async def setup_hook() -> None:
+    bot.add_view(OBSControls())
+    bot.add_view(VideoControls())
 
-    async def on_ready(self):
-        print(f"Logged in as {self.user} and ready to FUCK THE HOUSE UP BAYBEEEEEEEEEE\n--------")
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} and ready to FUCK THE HOUSE UP BAYBEEEEEEEEEEEE\n---------")
 
 class OBSControls(discord.ui.View):
     """
@@ -130,7 +129,6 @@ class VideoControls(discord.ui.View):
         obs_controller.pause_set()
         await interaction.response.send_message("Set Paused!", ephemeral=True)
 
-bot = PersistentViewBot()
 @bot.tree.command()
 async def test(interaction: discord.Interaction):
     await interaction.response.send_message("BlurgleGurgleldfnmrueg", view=OBSControls())
