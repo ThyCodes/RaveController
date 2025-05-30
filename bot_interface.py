@@ -131,11 +131,11 @@ class VideoControls(discord.ui.View):
         await interaction.response.send_message("Set Paused!", ephemeral=True)
 
 bot = PersistentViewBot()
-@bot.command()
+@bot.tree.command()
 async def test(interaction: discord.Interaction):
     await interaction.response.send_message("BlurgleGurgleldfnmrueg", view=OBSControls())
 
-@bot.command()
+@bot.tree.command()
 async def test2(interaction: discord.Interaction):
     await interaction.response.send_message("FlingleDingle", view=VideoControls())
 
