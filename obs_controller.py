@@ -37,6 +37,8 @@ class video_order:
             print("Video order not found! Attempting to build from files...")
             for root, dirs, files in os.walk(VIDEO_DIR):
                 for file in files:
+                    if file == f"{CURR_SET}.mp4":
+                        continue
                     if file.endswith(".mp4"):
                         self.files.append(file)
 
