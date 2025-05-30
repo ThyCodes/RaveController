@@ -45,14 +45,15 @@ config.read("config.toml")
 
 # If you have quotes in your role sorry
 # But that's dumb :3
-STAFF_ROLES = re.sub(r"[\"]", "", config["DEFAULT"]["roles"]).split(",")
-STAFF_ROLES_STR = ""
-for role in STAFF_ROLES:
-    STAFF_ROLES[STAFF_ROLES.index(role)] = role.strip()
-    if STAFF_ROLES.index(role) == len(STAFF_ROLES)-1:
-        STAFF_ROLES_STR += role
-    else:
-        STAFF_ROLES_STR += f"{role},"
+# Also this is causing weird issues so commented out for now
+# STAFF_ROLES = re.sub(r"[\"]", "", config["DEFAULT"]["roles"]).split(",")
+# STAFF_ROLES_STR = ""
+# for role in STAFF_ROLES:
+#     STAFF_ROLES[STAFF_ROLES.index(role)] = role.strip()
+#     if STAFF_ROLES.index(role) == len(STAFF_ROLES)-1:
+#         STAFF_ROLES_STR += role
+#     else:
+#         STAFF_ROLES_STR += f"{role},"
 
 # Emoji List
 EMOJI_stop_button = str("\U000023F9" + "\U0000FE0F")
@@ -139,7 +140,7 @@ async def test2(interaction: discord.Interaction):
     await interaction.response.send_message("FlingleDingle", view=VideoControls())
 
 @bot.tree.command(name="ControlPanel", description="Create the bot's control panel in this channel.")
-@bot.has_any_roles(STAFF_ROLES_STR)
+# @bot.has_any_roles(STAFF_ROLES_STR)
 async def control_panel(interaction:discord.Interaction):
     pass
 
