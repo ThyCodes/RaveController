@@ -34,7 +34,15 @@ class video_order:
         try:
             self.files = self.read().split(",")
         except FileNotFoundError:
-            print("Video order not found! Using empty list!")
+            print("Video order not found! Attempting to build from files...")
+            for root, dirs, files in os.walk(VIDEO_DIR):
+                for file in files:
+                    if file.endswith(".mp4"):
+                        self.files.append(file)
+
+            # Writing on load probably is gonna cause an issue or two but whatever
+            self.write()
+
 
     def index_of(self, key:str) -> int:
         try:
