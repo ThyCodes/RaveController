@@ -129,6 +129,13 @@ class VideoControls(discord.ui.View):
         obs_controller.pause_set()
         await interaction.response.send_message("Set Paused!", ephemeral=True)
 
+@bot.command()
+async def sync(interaction: discord.Interaction):
+    if not interaction.author.id == 223254712944820224:
+        print("Someone was a naughty sausage!")
+        return
+    await bot.tree.sync()
+
 @bot.tree.command()
 async def test(interaction: discord.Interaction):
     await interaction.response.send_message("BlurgleGurgleldfnmrueg", view=OBSControls())
