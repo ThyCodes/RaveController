@@ -109,7 +109,22 @@ class OBSControls(discord.ui.View):
     @discord.ui.button(label=f"{EMOJI_stop_button} Stop Stream", style=discord.ButtonStyle.red, custom_id='persistent_view:stopstream')
     async def stop_stream(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.stop_stream()
+        embed = discord.Embed(
+            title="Stream stopped!",
+            description="Hope it went well!",
+            color=discord.Color.green()
+        )
         await interaction.response.send_message("Stream stopped!", ephemeral=True)
+
+    @discord.ui.button(label="Video Queue", style=discord.ButtonStyle.green, custom_id="persistent_view:vidorder")
+    async def video_order(self, interaction: discord.Interaction, button: discord.ui.Button):
+        queue = str(obs_controller.VO)
+        embed = discord.Embed(
+            title = "Current Video Queue:",
+            description=queue,
+            color=discord.Color.green()
+        )
+        await interaction.response.send_message(embed=embed)
 
 class VideoControls(discord.ui.View):
 
@@ -230,15 +245,6 @@ async def add_video(interaction:discord.Interaction, url:str=None, filename:str=
             await interaction.followup.send(content=f"Video downloaded! It's loaded and ready to play!")
     except:
         await interaction.followup.send(content=f"Something went wrong with the video download, are you sure you gave it a unique filename?")
-
-@bot.tree.command(name="order", description="Shows the current order of sets loaded.")
-async def order(interaction:discord.Interaction):
-    embed = discord.Embed(
-        title="Current Set List",
-        description=str(obs_controller.VO),
-        color=discord.Color.green()
-    )
-    await interaction.response.send_message(embed=embed)
 
 
 

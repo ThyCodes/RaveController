@@ -8,6 +8,7 @@ import obsws_python as obs
 import shutil
 import re
 import time
+import sys
 
 
 VIDEO_DIR = os.path.join(os.getcwd(), "bin/videos")
@@ -19,7 +20,11 @@ CURR_SET = "current_set"
 
 config = configparser.ConfigParser()
 config.read("config.toml")
-CL = obs.ReqClient()
+try:
+    CL = obs.ReqClient()
+except ConnectionRefusedError:
+    sys.exit("Oops! There was an error connecting to OBS. Are you sure the config.toml has the correct info and OBS is running with the websocket option enabled?")
+
 
 # https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
 
@@ -48,10 +53,12 @@ class video_order:
 
     def __str__(self):
         file_list = ""
+        if len(self.files) == 0:
+            return "There are no videos in the queue!"
         for file in self.files:
             if self.files.index(file) != len(self.files)-1:
                 file = file + "\n"
-            file_list += f"{self.files.index(file)}. {file}"
+            file_list += f"{self.files.index(file)+1}. {file}"
         return file_list
 
     def index_of(self, key:str) -> int:
