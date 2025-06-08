@@ -34,7 +34,25 @@ class video_order:
         try:
             self.files = self.read().split(",")
         except FileNotFoundError:
-            print("Video order not found! Using empty list!")
+            print("Video order not found! Attempting to build from files...")
+            for root, dirs, files in os.walk(VIDEO_DIR):
+                for file in files:
+                    if file == f"{CURR_SET}.mp4":
+                        continue
+                    if file.endswith(".mp4"):
+                        self.files.append(file)
+
+            # Writing on load probably is gonna cause an issue or two but whatever
+            self.write()
+
+
+    def __str__(self):
+        file_list = ""
+        for file in self.files:
+            if self.files.index(file) != len(self.files)-1:
+                file = file + "\n"
+            file_list += f"{self.files.index(file)}. {file}"
+        return file_list
 
     def index_of(self, key:str) -> int:
         try:
@@ -89,7 +107,7 @@ class video_order:
         """
         file = os.path.join(VIDEO_DIR, "list.txt")
         with open(file, "r") as f:
-            return f.read(f)
+            return f.read()
 
 VO = video_order()
 
@@ -129,8 +147,17 @@ def start_stream():
 def stop_stream():
     CL.stop_stream()
 
-def get_set_info():
+def get_set_cursor():
     info = CL.get_media_input_status("Set").media_cursor
+    return info
+
+def set_cursor(ms: int):
+    if ms < 0:
+        return
+    CL.set_media_input_cursor("Set", ms)
+
+def restart_set():
+    CL.set_media_input_cursor("Set", 0)
 
 def archive_video():
     curr_video = os.path.join(f"{VIDEO_DIR}", f"{CURR_SET}.mp4")
@@ -142,7 +169,7 @@ def archive_video():
     # Gotta figure out that structure first
     # TODO: Come back to this
 
-def download_video(url:str, name:str):
+async def download_video(url:str, name:str):
     """
     Downloads the youtube video passed in via URL, gives it an index and a name.
     The name wont have to be unique but yknow, it should be for ease of looking up.
@@ -176,9 +203,11 @@ def download_video(url:str, name:str):
     
     if has_first:
         VO.add_video(fname)
+        VO.write()
     else:
         return -1
 
+    
     return VO.index_of(fname)
 
 def next_set():
@@ -203,17 +232,17 @@ def resume_set():
 
 if __name__ == "__main__":
     # change_scene("TestBRB")
-    download_video("https://www.youtube.com/watch?v=Bjt7mDVCLtk", "testFile1")
-    download_video("https://www.youtube.com/watch?v=JP7zsdorPLI", "testFile2")
-    download_video("https://www.youtube.com/watch?v=TUzvD4XjBBo", "testFile3")
-    download_video("https://www.youtube.com/watch?v=8Bm3le9s3-A", "testFile4")
-    VO.write()
-    pause = input("Waiting...")
-    next_set()
-    VO.write()
-    pause = input("Waiting...")
-    next_set()
-    VO.write()
-    pause = input("Waiting...")
-    next_set()
+    # download_video("https://www.youtube.com/watch?v=Bjt7mDVCLtk", "testFile1")
+    # download_video("https://www.youtube.com/watch?v=JP7zsdorPLI", "testFile2")
+    # download_video("https://www.youtube.com/watch?v=TUzvD4XjBBo", "testFile3")
+    # download_video("https://www.youtube.com/watch?v=8Bm3le9s3-A", "testFile4")
+    # VO.write()
+    # pause = input("Waiting...")
+    # next_set()
+    # VO.write()
+    # pause = input("Waiting...")
+    # next_set()
+    # VO.write()
+    # pause = input("Waiting...")
+    # next_set()
     VO.write()

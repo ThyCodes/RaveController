@@ -5,6 +5,8 @@ import obs_controller
 import asyncio
 from discord.ext import commands
 import re
+import cv2
+import math
 
 # https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
 
@@ -35,6 +37,9 @@ ARCHIVE_DIR = os.path.join(VIDEO_DIR, "archive")
 if not os.path.exists(ARCHIVE_DIR):
     os.makedirs(ARCHIVE_DIR)
 CURR_SET = "current_set"
+
+# Sets how long, in seconds, the bot will wait before deleting system messages besides the control panel
+DELETE_AFTER = 5
 # Just makes editing filename easier on me
 intents=discord.Intents.default()
 intents.message_content = True
@@ -59,20 +64,20 @@ config.read("config.toml")
 EMOJI_stop_button = str("\U000023F9" + "\U0000FE0F")
 EMOJI_start_button = str("\U000025B6" + "\U0000FE0F")
 EMOJI_pause_button = str("\U000023F8" + "\U0000FE0F")
-# Yes I yanked this right out of the examples on discord.py's github. Sue me. (dont)
-class PersistentViewBot(discord.Client):
-    def __init__(self):
-        intents = discord.Intents.default()
-        intents.message_content = True
+EMOJI_restart_button = str("\U0001F501")
 
-        super().__init__(intents=intents, command_prefix="!")
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(intents=intents, command_prefix="!")
 
-    async def setup_hook(self) -> None:
-        self.add_view(OBSControls())
-        self.add_view(VideoControls())
+@bot.event
+async def setup_hook() -> None:
+    bot.add_view(OBSControls())
+    bot.add_view(VideoControls())
 
-    async def on_ready(self):
-        print(f"Logged in as {self.user} and ready to FUCK THE HOUSE UP BAYBEEEEEEEEEE\n--------")
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} and ready to FUCK THE HOUSE UP BAYBEEEEEEEEEEEE\n---------")
 
 class OBSControls(discord.ui.View):
     """
@@ -118,47 +123,122 @@ class VideoControls(discord.ui.View):
         except IndexError:
             await interaction.response.send_message("This is the final video in the queue!")
             return
-        await interaction.response.send_message("Next set playing now!", ephemeral=True)
+        await interaction.response.send_message("Next set playing now!", ephemeral=True, delete_after=DELETE_AFTER)
 
     @discord.ui.button(label=f"{EMOJI_start_button} Play", style=discord.ButtonStyle.green, custom_id='persistent_view:play')
     async def resume_set(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.resume_set()
-        await interaction.response.send_message("Set Resumed!", ephemeral=True)
+        await interaction.response.send_message("Set Resumed!", ephemeral=True, delete_after=DELETE_AFTER)
 
     @discord.ui.button(label=f"{EMOJI_pause_button} Pause", style=discord.ButtonStyle.red, custom_id='persistent_view:pause')
     async def pause_set(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.pause_set()
-        await interaction.response.send_message("Set Paused!", ephemeral=True)
+        await interaction.response.send_message("Set Paused!", ephemeral=True, delete_after=DELETE_AFTER)
 
-bot = PersistentViewBot()
+    # TODO:
+    # figure out wtf is going on with wait_for and why it thinks its being used outside of an async context
+    # For now this is disabled
+
+   # @discord.ui.button(label="Set Video Time", style=discord.ButtonStyle.green, custom_id="persistent_view:ffrwd")
+   # async def set_video_time(self, interaction: discord.Interaction, button:discord.ui.Button):
+#
+   #     def check(m):
+   #         return m.author == interaction.user
+#
+   #     video = cv2.VideoCapture(f"{VIDEO_DIR}/{CURR_SET}.mp4")
+   #     duration = video.get(cv2.CAP_PROP_POS_MSEC) # Length of video in miliseconds
+   #     curr_cursor = obs_controller.get_set_cursor()
+   #     if curr_cursor == None:
+   #         await interaction.response.send_message("I'm sorry, the video isn't currently playing. Please start the video before modifying the time.")
+   #         return
+   #     else:
+   #         await interaction.response.send_message("What time would you like to move the set to? You can type in a time code (HH:MM:SS), or the number of seconds.")
+   #         try:
+   #             reply = await client.wait_for("message", check=check, timeout=30)
+   #             div = reply.content.split(":")
+   #             if len(div) < 1:
+   #                 try:
+   #                     milliseconds = int(div[0]) * 1000
+   #                 except TypeError:
+   #                     await interaction.followup.send("I'm sorry, that doesn't seem to be a valid time. Please try again.")
+   #                     return
+   #             else:
+   #                 try:
+   #                     milliseconds = (int(div[0])*60*60*1000) + (int(div[1]*60*1000) + int(div[2])*1000)
+   #                 except TypeError:
+   #                     await interaction.followup.send("I'm sorry, that doesn't seem to be a valid timecode. Please try again.")
+   #                     return
+   #         
+   #             if milliseconds > duration:
+   #                 await interaction.followup.send("I'm sorry, that is beyond the length of the video!")
+   #                 return
+   #             if milliseconds < 0:
+   #                 await interaction.followup.send("That's a negative value, I can't go below 0!")
+   #                 return
+#
+   #             obs_controller.set_cursor(milliseconds)
+   #         except asyncio.TimeoutError:
+   #             await interaction.followup.send("I'm sorry, I timed out waiting for your response!")
+
+    @discord.ui.button(label=f"{EMOJI_restart_button} Restart Set", style=discord.ButtonStyle.red, custom_id="persistent_view:restart")
+    async def restart(self, interaction: discord.Interaction, button: discord.ui.Button):
+        obs_controller.restart_set()
+        await interaction.response.send_message("Set restarted!", delete_after=DELETE_AFTER)
+
+
+
 @bot.command()
-async def test(interaction: discord.Interaction):
-    await interaction.response.send_message("BlurgleGurgleldfnmrueg", view=OBSControls())
+async def sync(interaction: discord.Interaction):
+    # TODO:
+    # Change this command to look for a role rather than an ID
+    # Or just do it on boot idfc
+    if not interaction.author.id == 223254712944820224:
+        print("Someone was a naughty sausage!")
+        return
+    await bot.tree.sync()
 
-@bot.command()
-async def test2(interaction: discord.Interaction):
-    await interaction.response.send_message("FlingleDingle", view=VideoControls())
-
-@bot.tree.command(name="ControlPanel", description="Create the bot's control panel in this channel.")
+@bot.tree.command(name="controlpanel", description="Create the bot's control panel in this channel.")
 # @bot.has_any_roles(STAFF_ROLES_STR)
 async def control_panel(interaction:discord.Interaction):
-    pass
+    embed_obs = discord.Embed(
+        title = "Stream Controls",
+        description = "Use these buttons to control OBS/The stream itself",
+        colour = discord.Color.blue()
+    )
+    await interaction.channel.send(embed=embed_obs, view=OBSControls())
 
-@bot.tree.command(name="AddVideo", description="Add a video to the player's queue")
+    embed_video = discord.Embed(
+        title = "Video Controls",
+        description = "Use these buttons to control the currently playing video",
+        colour = discord.Color.green()
+    )
+    await interaction.channel.send(embed=embed_video, view=VideoControls())
+
+@bot.tree.command(name="addvideo", description="Add a video to the player's queue")
 async def add_video(interaction:discord.Interaction, url:str=None, filename:str="Change Me!"):
+    # TODO:
+    # Add timeouts to ephemeral messages
     if url == None:
         await interaction.response.send_message("Sorry, a URL is required to download the video! Tends to help, yknow.", ephemeral=True)
         return
-    msg = await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
+    await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
     try:
-        place = obs_controller.download_video(url, filename)
-        await msg.delete()
+        place = await obs_controller.download_video(url, filename)
         if place >= 0:
-            await interaction.response.send_message(f"Video downloaded! It is number {place+1} in the queue!", ephemeral=True)
+            await interaction.followup.send(content=f"Video downloaded! It is number {place+1} in the queue!", ephemeral=True)
         else:
-            await interaction.response.send_message(f"Video downloaded! It's loaded and ready to play!", ephemeral=True)
+            await interaction.followup.send(content=f"Video downloaded! It's loaded and ready to play!")
     except:
-        await interaction.response.send_message(f"Something went wrong with the video download, are you sure you gave it a unique filename?")
+        await interaction.followup.send(content=f"Something went wrong with the video download, are you sure you gave it a unique filename?")
+
+@bot.tree.command(name="order", description="Shows the current order of sets loaded.")
+async def order(interaction:discord.Interaction):
+    embed = discord.Embed(
+        title="Current Set List",
+        description=str(obs_controller.VO),
+        color=discord.Color.green()
+    )
+    await interaction.response.send_message(embed=embed)
 
 
 
