@@ -5,3 +5,4 @@ bin/videos/*
 *.toml
 *.json
 __pycache__/*
+notes.txt

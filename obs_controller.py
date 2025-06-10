@@ -40,8 +40,10 @@ class video_order:
             self.files = self.read().split(",")
         except FileNotFoundError:
             print("Video order not found! Attempting to build from files...")
-            for root, dirs, files in os.walk(VIDEO_DIR):
-                for file in files:
+            for file in os.listdir(VIDEO_DIR):
+                file_path = os.path.join(VIDEO_DIR, file)
+                if os.path.isfile(file_path):
+                    print(file)
                     if file == f"{CURR_SET}.mp4":
                         continue
                     if file.endswith(".mp4"):
@@ -171,10 +173,6 @@ def archive_video():
     now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     archived_video = os.path.join(f"{ARCHIVE_DIR}", f"{now}.mp4")
     shutil.move(curr_video, archived_video)
-    # Rename File to current time and move to archive folder
-    # Will get followed up by the next set vid being renamed to current_set.mp4
-    # Gotta figure out that structure first
-    # TODO: Come back to this
 
 async def download_video(url:str, name:str):
     """
@@ -224,7 +222,7 @@ def next_set():
 
     set_scene_brb()
     time.sleep(1)
-    archive_video()
+    # archive_video()
     next_vid = VO.shift_up()
     next_vid_path = os.path.join(VIDEO_DIR, next_vid)
     current_vid_path = os.path.join(VIDEO_DIR, f"{CURR_SET}.mp4")
