@@ -9,6 +9,7 @@ import shutil
 import re
 import time
 import sys
+import psutil
 
 
 VIDEO_DIR = os.path.join(os.getcwd(), "bin/videos")
@@ -23,7 +24,15 @@ config.read("config.toml")
 try:
     CL = obs.ReqClient()
 except ConnectionRefusedError:
-    sys.exit("Oops! There was an error connecting to OBS. Are you sure the config.toml has the correct info and OBS is running with the websocket option enabled?")
+    try:
+        if "OBS.exe" in (i.name() for i in psutil.process_iter()):
+            sys.exit("Oops! There was an error connecting to OBS. Are you sure the config.toml has the correct info and OBS is running with the websocket option enabled?")
+        else:
+            sys.exit("Oops! OBS is not running! Please be sure to start OBS before running the bot!")
+    except psutil.NoSuchProcess:
+        sys.exit("Oops! OBS is not running! Please be sure to start OBS before running the bot!")
+
+    
 
 
 # https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
@@ -78,6 +87,8 @@ class video_order:
             self.files.append(filename)
         else:
             self.files.insert(index, filename)
+
+        self.write()
     
     def reorder(self, filename:str, index:int):
         """
@@ -94,7 +105,9 @@ class video_order:
         """
         Returns the first item in the list, and removes it. Used when changing sets.
         """
-        return self.files.pop(0)
+        next_file = self.files.pop(0)
+        self.write()
+        return next_file
     
     def write(self):
         """
@@ -185,6 +198,7 @@ async def download_video(url:str, name:str):
     has_first = False
     for file in os.listdir(vid_dir):
         if file.endswith("mp4"):
+            # This is bad, it assumes the file wont have current_set anywhere else in the name. Refactor
             if CURR_SET in file:
                 has_first = True
 
@@ -222,7 +236,7 @@ def next_set():
 
     set_scene_brb()
     time.sleep(1)
-    # archive_video()
+    archive_video()
     next_vid = VO.shift_up()
     next_vid_path = os.path.join(VIDEO_DIR, next_vid)
     current_vid_path = os.path.join(VIDEO_DIR, f"{CURR_SET}.mp4")

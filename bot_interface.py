@@ -7,6 +7,8 @@ from discord.ext import commands
 import re
 import cv2
 import math
+import string
+import random
 
 # https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
 
@@ -96,25 +98,31 @@ class OBSControls(discord.ui.View):
     @discord.ui.button(label="Swap Scene", style=discord.ButtonStyle.gray, custom_id='persistent_view:swapscene')
     async def swap_scene(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.change_scene()
-        await interaction.response.send_message("Scene swapped!", ephemeral=True)
+        embed = discord.Embed(
+            title = "Scene Swapped!",
+            description= "To swap back, click me again!"
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=DELETE_AFTER)
 
-    # TODO:
-    # Maybe make this just a command that displays everything else?
     @discord.ui.button(label=f"{EMOJI_start_button} Start Stream", style=discord.ButtonStyle.green, custom_id='persistent_view:startstream')
     async def start_stream(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.start_stream()
-        await interaction.response.send_message("Starting stream...", ephemeral=True)
+        embed = discord.Embed(
+            title = "Stream Started!",
+            description="Give it a few seconds to show up in VRChat, VRCDN isn't instant!",
+            color=discord.Color.green()
+        )
+        await interaction.response.send_message(embed=embed)
 
-    
     @discord.ui.button(label=f"{EMOJI_stop_button} Stop Stream", style=discord.ButtonStyle.red, custom_id='persistent_view:stopstream')
     async def stop_stream(self, interaction: discord.Interaction, button: discord.ui.Button):
         obs_controller.stop_stream()
         embed = discord.Embed(
             title="Stream stopped!",
             description="Hope it went well!",
-            color=discord.Color.green()
+            color=discord.Color.red()
         )
-        await interaction.response.send_message("Stream stopped!", ephemeral=True)
+        await interaction.response.send_message(embed=embed)
 
     @discord.ui.button(label="Video Queue", style=discord.ButtonStyle.green, custom_id="persistent_view:vidorder")
     async def video_order(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -136,7 +144,7 @@ class VideoControls(discord.ui.View):
         try:
             obs_controller.next_set()
         except IndexError:
-            await interaction.response.send_message("This is the final video in the queue!")
+            await interaction.response.send_message("This is the final video in the queue! Try swapping the scene instead.", ephemeral=True, delete_after=DELETE_AFTER)
             return
         await interaction.response.send_message("Next set playing now!", ephemeral=True, delete_after=DELETE_AFTER)
 
@@ -200,7 +208,42 @@ class VideoControls(discord.ui.View):
         obs_controller.restart_set()
         await interaction.response.send_message("Set restarted!", delete_after=DELETE_AFTER)
 
+def build_option_list():
+    files = obs_controller.VO.files
+    options = []
+    if len(files) == 0:
+        return None
+    for file in files:
+        options.append(
+            discord.SelectOption(
+                label=file,
+                description=f"Currently number {files.index(file)+1} in the queue"
+            )
+        )
+    return options
 
+# TODO:
+# Implement
+class video_select(discord.ui.Select):
+    def __init__(self):
+        self.files = obs_controller.VO.files
+        self.options = []
+        for file in self.files:
+            self.options.append(
+                discord.SelectOption(
+                    label=file,
+                    description=f"Currently number {self.files.index(file)+1} in the queue"
+                )
+            )
+
+        super().__init__(placeholder="Select a Video",max_values=1,min_values=1,options=self.options)
+    async def callback(self, interaction, select):
+        await interaction.response.send_message(f"{select.values[0]}")
+
+class select_view(discord.ui.View):
+    def __init__(self, *, timeout=180):
+        super().__init__(timeout=timeout)
+        self.add_item(video_select())
 
 @bot.command()
 async def sync(interaction: discord.Interaction):
@@ -212,6 +255,14 @@ async def sync(interaction: discord.Interaction):
         return
     await bot.tree.sync()
 
+@bot.command()
+async def test(ctx):
+    # This is purely a debug command
+    # Will be gone later
+    await ctx.channel.send("Choose a flavor you cunt", view=select_view())
+
+# Currently replies application failed to respond
+# TODO: Fix
 @bot.tree.command(name="controlpanel", description="Create the bot's control panel in this channel.")
 # @bot.has_any_roles(STAFF_ROLES_STR)
 async def control_panel(interaction:discord.Interaction):
@@ -229,22 +280,31 @@ async def control_panel(interaction:discord.Interaction):
     )
     await interaction.channel.send(embed=embed_video, view=VideoControls())
 
+def rand_string(len):
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(chars) for i in range(len))
+
 @bot.tree.command(name="addvideo", description="Add a video to the player's queue")
-async def add_video(interaction:discord.Interaction, url:str=None, filename:str="Change Me!"):
+async def add_video(interaction:discord.Interaction, url:str=None, filename:str=None):
     # TODO:
     # Add timeouts to ephemeral messages
+
+    if filename == "current_set":
+        await interaction.response.send_message("You picked the only name you can't have, sorry! If this is the first video being downloaded, don't worry! That'll be automatically assigned. Please pick a different name!", ephemeral=True)
     if url == None:
-        await interaction.response.send_message("Sorry, a URL is required to download the video! Tends to help, yknow.", ephemeral=True)
+        await interaction.response.send_message("Sorry, a URL is required to download the video! Ensure you entered the URL into the field as well!", ephemeral=True)
         return
     await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
     try:
+        if filename == None:
+            filename = rand_string(12)
         place = await obs_controller.download_video(url, filename)
         if place >= 0:
-            await interaction.followup.send(content=f"Video downloaded! It is number {place+1} in the queue!", ephemeral=True)
+            await interaction.followup.send(content=f"{filename} downloaded! It is number {place+1} in the queue!", ephemeral=True)
         else:
-            await interaction.followup.send(content=f"Video downloaded! It's loaded and ready to play!")
+            await interaction.followup.send(content=f"{filename} downloaded! It's loaded and ready to play!", ephemeral=True)
     except:
-        await interaction.followup.send(content=f"Something went wrong with the video download, are you sure you gave it a unique filename?")
+        await interaction.followup.send(content=f"Something went wrong with the video download, are you sure you gave it a unique filename?", ephemeral=True)
 
 
 
