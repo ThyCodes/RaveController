@@ -45,31 +45,32 @@ class video_order:
     """
     def __init__(self):
         self.files = []
-        try:
-            self.files = self.read().split(",")
-        except FileNotFoundError:
-            print("Video order not found! Attempting to build from files...")
-            for file in os.listdir(VIDEO_DIR):
-                file_path = os.path.join(VIDEO_DIR, file)
-                if os.path.isfile(file_path):
-                    print(file)
-                    if file == f"{CURR_SET}.mp4":
-                        continue
-                    if file.endswith(".mp4"):
-                        self.files.append(file)
+        for file in os.listdir(VIDEO_DIR):
+            file_path = os.path.join(VIDEO_DIR, file)
+            if os.path.isfile(file_path):
+                print(file)
+                if file == f"{CURR_SET}.mp4":
+                    continue
+                if file.endswith(".mp4"):
+                    self.files.append(file)
+        # Does not load from a .txt anymore
+        # But kept this for debugging
+        self.write()
 
-            # Writing on load probably is gonna cause an issue or two but whatever
-            self.write()
-
+    def remove(self, filename):
+        self.files.remove(filename)
 
     def __str__(self):
         file_list = ""
         if len(self.files) == 0:
             return "There are no videos in the queue!"
         for file in self.files:
+            print(file)
             if self.files.index(file) != len(self.files)-1:
-                file = file + "\n"
-            file_list += f"{self.files.index(file)+1}. {file}"
+                file_str = file + "\n"
+            else:
+                file_str = file
+            file_list += f"{self.files.index(file)+1}. {file_str}"
         return file_list
 
     def index_of(self, key:str) -> int:

@@ -285,7 +285,7 @@ def rand_string(len):
     return ''.join(random.choice(chars) for i in range(len))
 
 @bot.tree.command(name="addvideo", description="Add a video to the player's queue")
-async def add_video(interaction:discord.Interaction, url:str=None, filename:str=None):
+async def add_video(interaction:discord.Interaction, url:str, filename:str=None):
     # TODO:
     # Add timeouts to ephemeral messages
 
@@ -294,7 +294,7 @@ async def add_video(interaction:discord.Interaction, url:str=None, filename:str=
     if url == None:
         await interaction.response.send_message("Sorry, a URL is required to download the video! Ensure you entered the URL into the field as well!", ephemeral=True)
         return
-    await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!", ephemeral=True)
+    await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!\nDuring the download, the bot may become unresponsive.", ephemeral=True)
     try:
         if filename == None:
             filename = rand_string(12)
@@ -306,7 +306,17 @@ async def add_video(interaction:discord.Interaction, url:str=None, filename:str=
     except:
         await interaction.followup.send(content=f"Something went wrong with the video download, are you sure you gave it a unique filename?", ephemeral=True)
 
+@bot.tree.command(name="removevideo", description="Remove a video from the player's queue!")
+async def remove_video(interaction: discord.Interaction, video:str):
+    if not os.path.exists(f"{VIDEO_DIR}/{video}.mp4"):
+        await interaction.response.send_message(f"I'm sorry, {video} is not a valid filename.", ephemeral=True, delete_after=DELETE_AFTER)
+        return
+    if not video.endswith(".mp4"):
+        video += ".mp4"
 
+    obs_controller.VO.remove(video)
+    os.remove(f"{VIDEO_DIR}/{video}")
+    await interaction.response.send_message(f"{video} has been removed from the queue!", delete_after=DELETE_AFTER)
 
 
 
