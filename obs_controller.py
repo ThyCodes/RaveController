@@ -21,6 +21,8 @@ CURR_SET = "current_set"
 
 config = configparser.ConfigParser()
 config.read("config.toml")
+SWAP_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
+LIVE_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
 try:
     CL = obs.ReqClient()
 except ConnectionRefusedError:
@@ -139,8 +141,7 @@ def set_scene_brb():
     """
     Forces the currently active scene to the "inactive" scene for video swapping
     """
-    swap_scene = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
-    CL.set_current_program_scene(swap_scene)
+    CL.set_current_program_scene(SWAP_SCENE)
     return
 
 def change_scene():
@@ -149,17 +150,15 @@ def change_scene():
 
     Defaults to swapping to the transition scene if any other scene is currently active, just in case.
     """
-    # Why does it have to remove the "" from the string? Fuck if I know, god hates me I guess.
+    # Why does it have to remove the "" from the string? Because .toml files are dumb and I cba changing over to a different library at this point.
     # Anyway dont put punctuation in your scene names. Sorry to non-english languages for this one but im lazy
-    live_scene = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
-    swap_scene = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
     current_scene = CL.get_current_program_scene().current_program_scene_name
     print(f"Scene: {current_scene}")
     try:
-        if current_scene == swap_scene:
-            CL.set_current_program_scene(live_scene)
+        if current_scene == SWAP_SCENE:
+            CL.set_current_program_scene(LIVE_SCENE)
         else:
-            CL.set_current_program_scene(swap_scene)
+            CL.set_current_program_scene(SWAP_SCENE)
     except obs.error.OBSSDKRequestError:
         print("Error processing the source names in your config.toml file. Make sure they exist and there isn't punctuation or non-english characters!")
 
@@ -173,6 +172,45 @@ def stop_stream():
 def get_set_cursor():
     info = CL.get_media_input_status("Set").media_cursor
     return info
+
+def resize_video_obj():
+    """
+    Resizes the video object in OBS to 1920x1080, regardless of the source resolution
+    """
+    # In case more than just the video item is added to the scene
+    resp = CL.get_scene_item_list(scene_name=LIVE_SCENE)
+    items = resp.scene_items
+    item = next((i for i in items if i.source_name == "Set"), None)
+    if not item:
+        raise ValueError(f"Source 'Set' was not found in the live scene, please ensure the OBS setup function completed successfully.")
+
+    sid = item.scene_item_id
+
+    t_resp = CL.get_scene_item_transform(scene_name=LIVE_SCENE, scene_item_id=sid)
+    info = t_resp.scene_item_transform
+    video_w = info.source_width
+    video_h = info.source_height
+
+    scale_x = 1920 / video_w
+    scale_y = 1080 / video_h
+
+    CL.set_scene_item_transform(
+        scene_name=LIVE_SCENE,
+        scene_item_id=sid,
+        scene_item_transform={
+            "positionX": 0.0,
+            "positionY": 0.0,
+            "scaleX": scale_x,
+            "scaleY": scale_y,
+            "rotation": 0.0,
+            "cropTop": 0,
+            "cropBottom": 0,
+            "cropLeft": 0,
+            "cropRight": 0
+        }
+    )
+
+    print("Set stretched to fit canvas.")
 
 def set_cursor(ms: int):
     if ms < 0:
@@ -242,6 +280,7 @@ def next_set():
     next_vid_path = os.path.join(VIDEO_DIR, next_vid)
     current_vid_path = os.path.join(VIDEO_DIR, f"{CURR_SET}.mp4")
     shutil.move(next_vid_path, current_vid_path)
+    resize_video_obj()
     change_scene()
 
 def pause_set():
