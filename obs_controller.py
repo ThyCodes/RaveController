@@ -10,6 +10,7 @@ import re
 import time
 import sys
 import psutil
+import logging
 
 
 VIDEO_DIR = os.path.join(os.getcwd(), "bin/videos")
@@ -23,6 +24,16 @@ config = configparser.ConfigParser()
 config.read("config.toml")
 SWAP_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
 LIVE_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
+
+logging.basicConfig(
+    filename="debug.log",
+    encoding="utf-8",
+    filemode="a",
+    format="{asctime} - {levelname} - {message}",
+    style="{",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
 try:
     CL = obs.ReqClient()
 except ConnectionRefusedError:

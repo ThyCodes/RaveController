@@ -6,3 +6,4 @@ bin/videos/*
 *.json
 __pycache__/*
 notes.txt
+debug.log

@@ -9,6 +9,8 @@ import cv2
 import math
 import string
 import random
+import logging
+from datetime import datetime
 
 # https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
 
@@ -72,6 +74,15 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(intents=intents, command_prefix="!")
 
+logging.basicConfig(
+    filename="debug.log",
+    encoding="utf-8",
+    filemode="a",
+    format="{asctime} - {levelname} - {message}",
+    style="{",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
 @bot.event
 async def setup_hook() -> None:
     bot.add_view(OBSControls())
@@ -79,6 +90,7 @@ async def setup_hook() -> None:
 
 @bot.event
 async def on_ready():
+    logging.info(f"Bot started.")
     print(f"Logged in as {bot.user} and ready to FUCK THE HOUSE UP BAYBEEEEEEEEEEEE\n---------")
 
 class OBSControls(discord.ui.View):
@@ -97,6 +109,7 @@ class OBSControls(discord.ui.View):
     # Just in case this button is clicked accidentally
     @discord.ui.button(label="Swap Scene", style=discord.ButtonStyle.gray, custom_id='persistent_view:swapscene')
     async def swap_scene(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logging.info(f"Scene swapped by {interaction.user.name}.")
         obs_controller.change_scene()
         embed = discord.Embed(
             title = "Scene Swapped!",
@@ -106,6 +119,7 @@ class OBSControls(discord.ui.View):
 
     @discord.ui.button(label=f"{EMOJI_start_button} Start Stream", style=discord.ButtonStyle.green, custom_id='persistent_view:startstream')
     async def start_stream(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logging.info(f"Stream started by {interaction.user.name}.")
         obs_controller.start_stream()
         embed = discord.Embed(
             title = "Stream Started!",
@@ -116,6 +130,7 @@ class OBSControls(discord.ui.View):
 
     @discord.ui.button(label=f"{EMOJI_stop_button} Stop Stream", style=discord.ButtonStyle.red, custom_id='persistent_view:stopstream')
     async def stop_stream(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logging.info(f"Stream stopped by {interaction.user.name}")
         obs_controller.stop_stream()
         embed = discord.Embed(
             title="Stream stopped!",
@@ -126,6 +141,7 @@ class OBSControls(discord.ui.View):
 
     @discord.ui.button(label="Video Queue", style=discord.ButtonStyle.green, custom_id="persistent_view:vidorder")
     async def video_order(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logging.info("Video queue displayed.")
         queue = str(obs_controller.VO)
         embed = discord.Embed(
             title = "Current Video Queue:",
@@ -143,18 +159,22 @@ class VideoControls(discord.ui.View):
     async def next_set(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             obs_controller.next_set()
+            logging.info(f"Set cycled by {interaction.user.name}.")
         except IndexError:
+            logging.warning(f"Set unsuccessfully cycled by {interaction.user.name}, final video in the queue.")
             await interaction.response.send_message("This is the final video in the queue! Try swapping the scene instead.", ephemeral=True, delete_after=DELETE_AFTER)
             return
         await interaction.response.send_message("Next set playing now!", ephemeral=True, delete_after=DELETE_AFTER)
 
     @discord.ui.button(label=f"{EMOJI_start_button} Play", style=discord.ButtonStyle.green, custom_id='persistent_view:play')
     async def resume_set(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logging.info(f"Set resumed by {interaction.user.name}.")
         obs_controller.resume_set()
         await interaction.response.send_message("Set Resumed!", ephemeral=True, delete_after=DELETE_AFTER)
 
     @discord.ui.button(label=f"{EMOJI_pause_button} Pause", style=discord.ButtonStyle.red, custom_id='persistent_view:pause')
     async def pause_set(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logging.info(f"Set paused by {interaction.user.name}.")
         obs_controller.pause_set()
         await interaction.response.send_message("Set Paused!", ephemeral=True, delete_after=DELETE_AFTER)
 
@@ -205,6 +225,7 @@ class VideoControls(discord.ui.View):
 
     @discord.ui.button(label=f"{EMOJI_restart_button} Restart Set", style=discord.ButtonStyle.red, custom_id="persistent_view:restart")
     async def restart(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logging.info(f"Set restarted by {interaction.user.name}.")
         obs_controller.restart_set()
         await interaction.response.send_message("Set restarted!", delete_after=DELETE_AFTER)
 
@@ -251,6 +272,7 @@ async def sync(interaction: discord.Interaction):
     # Change this command to look for a role rather than an ID
     # Or just do it on boot idfc
     if not interaction.author.id == 223254712944820224:
+        logging.warning(f"Sync command run by {interaction.user.name}.")
         print("Someone was a naughty sausage!")
         return
     await bot.tree.sync()
@@ -266,6 +288,7 @@ async def test(ctx):
 @bot.tree.command(name="controlpanel", description="Create the bot's control panel in this channel.")
 # @bot.has_any_roles(STAFF_ROLES_STR)
 async def control_panel(interaction:discord.Interaction):
+    logging.info(f"Control panel spawned by {interaction.user.name}.")
     embed_obs = discord.Embed(
         title = "Stream Controls",
         description = "Use these buttons to control OBS/The stream itself",
@@ -290,8 +313,10 @@ async def add_video(interaction:discord.Interaction, url:str, filename:str=None)
     # Add timeouts to ephemeral messages
 
     if filename == "current_set":
+        logging.warning(f"Invalid filename passed to addvideo command by {interaction.user.name}: 'current_set' is a reserved name.")
         await interaction.response.send_message("You picked the only name you can't have, sorry! If this is the first video being downloaded, don't worry! That'll be automatically assigned. Please pick a different name!", ephemeral=True)
     if url == None:
+        logging.warning(f"No URL passed to addvideo command by {interaction.user.name}.")
         await interaction.response.send_message("Sorry, a URL is required to download the video! Ensure you entered the URL into the field as well!", ephemeral=True)
         return
     await interaction.response.send_message(f"Attempting video download... Please be patient! This can take a while!\nDuring the download, the bot may become unresponsive.", ephemeral=True)
@@ -303,19 +328,23 @@ async def add_video(interaction:discord.Interaction, url:str, filename:str=None)
             await interaction.followup.send(content=f"{filename} downloaded! It is number {place+1} in the queue!", ephemeral=True)
         else:
             await interaction.followup.send(content=f"{filename} downloaded! It's loaded and ready to play!", ephemeral=True)
+        logging.info(f"File with url {url} downloaded as {filename}.mp4 by {interaction.user.name}.")
     except:
-        await interaction.followup.send(content=f"Something went wrong with the video download, are you sure you gave it a unique filename?", ephemeral=True)
+        logging.error(f"Improper URL passed to addvideo command by {interaction.user.name}. URL: {url}")
+        await interaction.followup.send(content=f"Something went wrong with the video download, are you sure you gave it a valid youtube URL?", ephemeral=True)
 
 @bot.tree.command(name="removevideo", description="Remove a video from the player's queue!")
 async def remove_video(interaction: discord.Interaction, video:str):
-    if not os.path.exists(f"{VIDEO_DIR}/{video}.mp4"):
-        await interaction.response.send_message(f"I'm sorry, {video} is not a valid filename.", ephemeral=True, delete_after=DELETE_AFTER)
-        return
     if not video.endswith(".mp4"):
         video += ".mp4"
+    if not os.path.exists(f"{VIDEO_DIR}/{video}.mp4"):
+        logging.warning(f"Invalid filename passed to removevideo command by {interaction.user.name}. Filename: {video}")
+        await interaction.response.send_message(f"I'm sorry, {video} is not a valid filename.", ephemeral=True, delete_after=DELETE_AFTER)
+        return
 
     obs_controller.VO.remove(video)
     os.remove(f"{VIDEO_DIR}/{video}")
+    logging.info(f"File {video} removed from queue by {interaction.user.name}.")
     embed = discord.Embed(
         title = f"{video} removed from queue!",
         description = f"Here's the queue now: \n{str(obs_controller.VO)}"
