@@ -316,7 +316,12 @@ async def remove_video(interaction: discord.Interaction, video:str):
 
     obs_controller.VO.remove(video)
     os.remove(f"{VIDEO_DIR}/{video}")
-    await interaction.response.send_message(f"{video} has been removed from the queue!", delete_after=DELETE_AFTER)
+    embed = discord.Embed(
+        title = f"{video} removed from queue!",
+        description = f"Here's the queue now: \n{str(obs_controller.VO)}"
+        color=discord.Color.green()
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=DELETE_AFTER)
 
 
 
