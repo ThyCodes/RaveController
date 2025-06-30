@@ -78,7 +78,7 @@ logging.basicConfig(
     filename="debug.log",
     encoding="utf-8",
     filemode="a",
-    format="{asctime} - {levelname} - {message}",
+    format="{asctime} - {levelname}_BOT - {message}",
     style="{",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
@@ -109,7 +109,7 @@ class OBSControls(discord.ui.View):
     # Just in case this button is clicked accidentally
     @discord.ui.button(label="Swap Scene", style=discord.ButtonStyle.gray, custom_id='persistent_view:swapscene')
     async def swap_scene(self, interaction: discord.Interaction, button: discord.ui.Button):
-        logging.info(f"Scene swapped by {interaction.user.name}.")
+        logging.info(f"Scene swap button clicked by {interaction.user.name}.")
         obs_controller.change_scene()
         embed = discord.Embed(
             title = "Scene Swapped!",
@@ -355,7 +355,8 @@ async def remove_video(interaction: discord.Interaction, video:str):
 
 
 
-
+def run(token):
+    bot.run(token)
 
 if __name__ == "__main__":
     token = re.sub(r"\"", "", config["DEFAULT"]["token"])

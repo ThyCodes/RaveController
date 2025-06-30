@@ -21,7 +21,10 @@ CURR_SET = "current_set"
 # Just makes editing filename easier on me
 
 config = configparser.ConfigParser()
-config.read("config.toml")
+try:
+    config.read("config.toml")
+except FileNotFoundError:
+    setup()
 SWAP_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
 LIVE_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
 
@@ -29,23 +32,27 @@ logging.basicConfig(
     filename="debug.log",
     encoding="utf-8",
     filemode="a",
-    format="{asctime} - {levelname} - {message}",
+    format="{asctime} - {levelname}_OBS - {message}",
     style="{",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
 try:
     CL = obs.ReqClient()
+    logging.info("Connected to OBS websocket.")
 except ConnectionRefusedError:
     try:
         if "OBS.exe" in (i.name() for i in psutil.process_iter()):
+            logging.error("OBS websocket connection failed due to improper config.")
             sys.exit("Oops! There was an error connecting to OBS. Are you sure the config.toml has the correct info and OBS is running with the websocket option enabled?")
         else:
+            logging.critical("OBS was not detected in the running process list.")
             sys.exit("Oops! OBS is not running! Please be sure to start OBS before running the bot!")
     except psutil.NoSuchProcess:
+        logging.critical("OBS was not detected in the running process list.")
         sys.exit("Oops! OBS is not running! Please be sure to start OBS before running the bot!")
 
-    
+scene_setup()
 
 
 # https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md#obsmediainputactionobs_websocket_media_input_action_restart
@@ -72,6 +79,7 @@ class video_order:
 
     def remove(self, filename):
         self.files.remove(filename)
+        logging.info(f"Removed {filename} from queue.")
 
     def __str__(self):
         file_list = ""
@@ -101,7 +109,7 @@ class video_order:
             self.files.append(filename)
         else:
             self.files.insert(index, filename)
-
+        logging.info(f"File {filename} added to queue.")
         self.write()
     
     def reorder(self, filename:str, index:int):
@@ -114,6 +122,7 @@ class video_order:
         
         self.files.remove(filename)
         self.files.insert(index, filename)
+        logging.info(f"File {filename} reordered in queue to index {index}.")
 
     def shift_up(self) -> str:
         """
@@ -121,6 +130,7 @@ class video_order:
         """
         next_file = self.files.pop(0)
         self.write()
+        logging.info(f"Queue moved up, file {next_file} now playing.")
         return next_file
     
     def write(self):
@@ -147,12 +157,69 @@ class video_order:
 
 VO = video_order()
 
+def setup():
+    """
+    First time setup function
+    Only runs when the user has not created the required config.toml
+    Will create the necessary file and advise the user on how to set up OBS.
+
+    Default OBS setup will be processed on second boot once the websocket connection has been configured.
+    """
+    config["DEFAULT"] = {"swap_scene": "", "live_scene": "", "token": "YOUR_BOT_TOKEN_HERE"}
+    config["connection"] = {"host": "\"localhost\"", "port": 4455, "password": "\"YOUR_WEBSOCKET_PASSWORD_HERE\"", "timeout": "None"}
+    with open("config.toml", "w") as f:
+        config.write(f)
+
+    print("Default config file generated! Fill it out with whatever information you'd like, configure your OBS websocket, then run this file again to auto-generate the necessary scenes and sources!\n\nFor a more detailed explanation of what to do, check out the setup guide in the readme!")
+    quit()
+
+
+def scene_setup():
+    # ALL UNTESTED
+    scenes = CL.get_scene_list().scenes
+    if SWAP_SCENE == "" and "BRBScene" not in scenes:
+        config["DEFAULT"]["swap_scene"] = "BRBScene"
+        SWAP_SCENE = "BRBScene"
+        with open("config.toml", "w") as f:
+            config.write(f)
+    if LIVE_SCENE == "" and "SetScene" not in scenes:
+        config["DEFAULT"]["live_scene"] = "SetScene"
+        LIVE_SCENE = "SetScene"
+        with open("config.toml", "w") as f:
+            config.write(f)
+    
+    if SWAP_SCENE not in scenes:
+        CL.create_scene(scene_name=SWAP_SCENE)
+        logging.info(f"Scene {SWAP_SCENE} created in OBS.")
+    if LIVE_SCENE not in scenes:
+        CL.create_scene(scene_name=LIVE_SCENE)
+        logging.info(f"Scene {LIVE_SCENE} created in OBS.")
+    set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE)
+    if "Set" not in set_media_input:
+        settings = {
+            "local_file": os.path.join(VIDEO_DIR, "current_set.mp4"),
+            "looping": False
+        }
+        try:
+            CL.create_input(
+                scene_name = LIVE_SCENE,
+                input_name = "Set",
+                input_kind = "ffmpeg_source",
+                input_settings = settings,
+                scene_item_enabled = True
+            )
+            logging.info(f"Set Media Input created in OBS scene {LIVE_SCENE}")
+        except Exception as e:
+            print(f"Error adding media source: {e}")
+
+    
 
 def set_scene_brb():
     """
     Forces the currently active scene to the "inactive" scene for video swapping
     """
     CL.set_current_program_scene(SWAP_SCENE)
+    logging.info(f"Scene swapped to {SWAP_SCENE}.")
     return
 
 def change_scene():
@@ -168,17 +235,24 @@ def change_scene():
     try:
         if current_scene == SWAP_SCENE:
             CL.set_current_program_scene(LIVE_SCENE)
+            logging.info(f"Scene changed from {SWAP_SCENE} to {LIVE_SCENE}.")
         else:
             CL.set_current_program_scene(SWAP_SCENE)
+            logging.info(f"Scene changed from {LIVE_SCENE} to {SWAP_SCENE}.")
     except obs.error.OBSSDKRequestError:
+        logging.error(f"Improper scene names in config.toml: Live: {LIVE_SCENE} | Swap: {SWAP_SCENE}")
+    if not video.endswith(".mp4"):
+        video += ".mp4"
         print("Error processing the source names in your config.toml file. Make sure they exist and there isn't punctuation or non-english characters!")
 
 def start_stream():
     set_scene_brb()
     CL.start_stream()
+    logging.info("Stream started.")
 
 def stop_stream():
     CL.stop_stream()
+    logging.info("Stream stopped.")
 
 def get_set_cursor():
     info = CL.get_media_input_status("Set").media_cursor
@@ -193,6 +267,7 @@ def resize_video_obj():
     items = resp.scene_items
     item = next((i for i in items if i.source_name == "Set"), None)
     if not item:
+        logging.critical(f"Live scene improperly configured: no media source with name Set found.")
         raise ValueError(f"Source 'Set' was not found in the live scene, please ensure the OBS setup function completed successfully.")
 
     sid = item.scene_item_id
@@ -222,20 +297,24 @@ def resize_video_obj():
     )
 
     print("Set stretched to fit canvas.")
+    logging.info(f"Set stretched to fit canvas with scale_x = {scale_x} and scale_y = {scale_y}")
 
 def set_cursor(ms: int):
     if ms < 0:
         return
     CL.set_media_input_cursor("Set", ms)
+    logging.info(f"Media cursor set to {ms} miliseconds.")
 
 def restart_set():
     CL.set_media_input_cursor("Set", 0)
+    logging.info("")
 
 def archive_video():
     curr_video = os.path.join(f"{VIDEO_DIR}", f"{CURR_SET}.mp4")
     now = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     archived_video = os.path.join(f"{ARCHIVE_DIR}", f"{now}.mp4")
     shutil.move(curr_video, archived_video)
+    logging.info(f"Current set archived under file {now}.mp4.")
 
 async def download_video(url:str, name:str):
     """
@@ -266,10 +345,11 @@ async def download_video(url:str, name:str):
     try:
         ydl.download(url)
     except yt_dlp.utils.DownloadError:
+        logging.error(f"Error downloading youtube video with URL {url}")
         print("Error downloading youtube video, are you sure that is a valid, visible URL?")
         #TODO: Actual error processing in case of invalid URL
         return
-    
+    logging.info(f"File {fname} successfully downloaded from url {url}.") 
     if has_first:
         VO.add_video(fname)
         VO.write()
@@ -293,12 +373,15 @@ def next_set():
     shutil.move(next_vid_path, current_vid_path)
     resize_video_obj()
     change_scene()
+    logging.info(f"Set changed to {next_vid}.")
 
 def pause_set():
     CL.trigger_media_input_action("Set", "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PAUSE")
+    logging.info("Set paused.")
 
 def resume_set():
     CL.trigger_media_input_action("Set", "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY")
+    logging.info("Set resumed.")
 
 if __name__ == "__main__":
     # change_scene("TestBRB")
