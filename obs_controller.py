@@ -5,6 +5,7 @@ import discord
 import obsws_python as obs
 from datetime import datetime
 import obsws_python as obs
+from obsws_python.error import OBSSDKRequestError
 import shutil
 import re
 import time
@@ -62,11 +63,18 @@ def scene_setup():
             config.write(f)
     
     if SWAP_SCENE not in scenes:
-        CL.create_scene(SWAP_SCENE)
-        logging.info(f"Scene {SWAP_SCENE} created in OBS.")
+        try:
+            CL.create_scene(SWAP_SCENE)
+            logging.info(f"Scene {SWAP_SCENE} created in OBS.")
+        except OBSSDKRequestError:
+            logging.warning(f"Scene {SWAP_SCENE} attempted to be created when already exists.")
+        
     if LIVE_SCENE not in scenes:
-        CL.create_scene(LIVE_SCENE)
-        logging.info(f"Scene {LIVE_SCENE} created in OBS.")
+        try:
+            CL.create_scene(LIVE_SCENE)
+            logging.info(f"Scene {LIVE_SCENE} created in OBS.")
+        except OBSSDKRequestError:
+            logging.warning("Scene {LIVE_SCENE} attempted to be created when already exists.")
     set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE)
     if "Set" not in set_media_input:
         settings = {
