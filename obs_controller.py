@@ -20,6 +20,61 @@ if not os.path.exists(ARCHIVE_DIR):
 CURR_SET = "current_set"
 # Just makes editing filename easier on me
 
+def setup():
+    """
+    First time setup function
+    Only runs when the user has not created the required config.toml
+    Will create the necessary file and advise the user on how to set up OBS.
+
+    Default OBS setup will be processed on second boot once the websocket connection has been configured.
+    """
+    config["DEFAULT"] = {"swap_scene": "", "live_scene": "", "token": "YOUR_BOT_TOKEN_HERE"}
+    config["connection"] = {"host": "\"localhost\"", "port": 4455, "password": "\"YOUR_WEBSOCKET_PASSWORD_HERE\"", "timeout": "None"}
+    with open("config.toml", "w") as f:
+        config.write(f)
+
+    print("Default config file generated! Fill it out with whatever information you'd like, configure your OBS websocket, then run this file again to auto-generate the necessary scenes and sources!\n\nFor a more detailed explanation of what to do, check out the setup guide in the readme!")
+    quit()
+
+
+def scene_setup():
+    # ALL UNTESTED
+    scenes = CL.get_scene_list().scenes
+    if SWAP_SCENE == "" and "BRBScene" not in scenes:
+        config["DEFAULT"]["swap_scene"] = "BRBScene"
+        SWAP_SCENE = "BRBScene"
+        with open("config.toml", "w") as f:
+            config.write(f)
+    if LIVE_SCENE == "" and "SetScene" not in scenes:
+        config["DEFAULT"]["live_scene"] = "SetScene"
+        LIVE_SCENE = "SetScene"
+        with open("config.toml", "w") as f:
+            config.write(f)
+    
+    if SWAP_SCENE not in scenes:
+        CL.create_scene(scene_name=SWAP_SCENE)
+        logging.info(f"Scene {SWAP_SCENE} created in OBS.")
+    if LIVE_SCENE not in scenes:
+        CL.create_scene(scene_name=LIVE_SCENE)
+        logging.info(f"Scene {LIVE_SCENE} created in OBS.")
+    set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE)
+    if "Set" not in set_media_input:
+        settings = {
+            "local_file": os.path.join(VIDEO_DIR, "current_set.mp4"),
+            "looping": False
+        }
+        try:
+            CL.create_input(
+                scene_name = LIVE_SCENE,
+                input_name = "Set",
+                input_kind = "ffmpeg_source",
+                input_settings = settings,
+                scene_item_enabled = True
+            )
+            logging.info(f"Set Media Input created in OBS scene {LIVE_SCENE}")
+        except Exception as e:
+            print(f"Error adding media source: {e}")
+
 config = configparser.ConfigParser()
 try:
     config.read("config.toml")
@@ -156,61 +211,6 @@ class video_order:
             return f.read()
 
 VO = video_order()
-
-def setup():
-    """
-    First time setup function
-    Only runs when the user has not created the required config.toml
-    Will create the necessary file and advise the user on how to set up OBS.
-
-    Default OBS setup will be processed on second boot once the websocket connection has been configured.
-    """
-    config["DEFAULT"] = {"swap_scene": "", "live_scene": "", "token": "YOUR_BOT_TOKEN_HERE"}
-    config["connection"] = {"host": "\"localhost\"", "port": 4455, "password": "\"YOUR_WEBSOCKET_PASSWORD_HERE\"", "timeout": "None"}
-    with open("config.toml", "w") as f:
-        config.write(f)
-
-    print("Default config file generated! Fill it out with whatever information you'd like, configure your OBS websocket, then run this file again to auto-generate the necessary scenes and sources!\n\nFor a more detailed explanation of what to do, check out the setup guide in the readme!")
-    quit()
-
-
-def scene_setup():
-    # ALL UNTESTED
-    scenes = CL.get_scene_list().scenes
-    if SWAP_SCENE == "" and "BRBScene" not in scenes:
-        config["DEFAULT"]["swap_scene"] = "BRBScene"
-        SWAP_SCENE = "BRBScene"
-        with open("config.toml", "w") as f:
-            config.write(f)
-    if LIVE_SCENE == "" and "SetScene" not in scenes:
-        config["DEFAULT"]["live_scene"] = "SetScene"
-        LIVE_SCENE = "SetScene"
-        with open("config.toml", "w") as f:
-            config.write(f)
-    
-    if SWAP_SCENE not in scenes:
-        CL.create_scene(scene_name=SWAP_SCENE)
-        logging.info(f"Scene {SWAP_SCENE} created in OBS.")
-    if LIVE_SCENE not in scenes:
-        CL.create_scene(scene_name=LIVE_SCENE)
-        logging.info(f"Scene {LIVE_SCENE} created in OBS.")
-    set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE)
-    if "Set" not in set_media_input:
-        settings = {
-            "local_file": os.path.join(VIDEO_DIR, "current_set.mp4"),
-            "looping": False
-        }
-        try:
-            CL.create_input(
-                scene_name = LIVE_SCENE,
-                input_name = "Set",
-                input_kind = "ffmpeg_source",
-                input_settings = settings,
-                scene_item_enabled = True
-            )
-            logging.info(f"Set Media Input created in OBS scene {LIVE_SCENE}")
-        except Exception as e:
-            print(f"Error adding media source: {e}")
 
     
 

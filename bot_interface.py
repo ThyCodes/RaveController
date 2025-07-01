@@ -347,7 +347,7 @@ async def remove_video(interaction: discord.Interaction, video:str):
     logging.info(f"File {video} removed from queue by {interaction.user.name}.")
     embed = discord.Embed(
         title = f"{video} removed from queue!",
-        description = f"Here's the queue now: \n{str(obs_controller.VO)}"
+        description = f"Here's the queue now: \n{str(obs_controller.VO)}",
         color=discord.Color.green()
     )
     await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=DELETE_AFTER)
