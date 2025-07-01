@@ -75,7 +75,7 @@ def scene_setup():
             logging.info(f"Scene {LIVE_SCENE} created in OBS.")
         except OBSSDKRequestError:
             logging.warning("Scene {LIVE_SCENE} attempted to be created when already exists.")
-    set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE)
+    set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE).scene_items
     if "Set" not in set_media_input:
         settings = {
             "local_file": os.path.join(VIDEO_DIR, "current_set.mp4"),
@@ -276,7 +276,7 @@ def resize_video_obj():
     Resizes the video object in OBS to 1920x1080, regardless of the source resolution
     """
     # In case more than just the video item is added to the scene
-    resp = CL.get_scene_item_list(scene_name=LIVE_SCENE)
+    resp = CL.get_scene_item_list(LIVE_SCENE)
     items = resp.scene_items
     item = next((i for i in items if i.source_name == "Set"), None)
     if not item:
@@ -285,7 +285,7 @@ def resize_video_obj():
 
     sid = item.scene_item_id
 
-    t_resp = CL.get_scene_item_transform(scene_name=LIVE_SCENE, scene_item_id=sid)
+    t_resp = CL.get_scene_item_transform(LIVE_SCENE, sid)
     info = t_resp.scene_item_transform
     video_w = info.source_width
     video_h = info.source_height
