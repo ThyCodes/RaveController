@@ -47,6 +47,8 @@ LIVE_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
 
 def scene_setup():
     # ALL UNTESTED
+    global SWAP_SCENE
+    global LIVE_SCENE
     scenes = CL.get_scene_list().scenes
     if SWAP_SCENE == "" and "BRBScene" not in scenes:
         config["DEFAULT"]["swap_scene"] = "BRBScene"
