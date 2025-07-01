@@ -8,4 +8,4 @@ config = configparser.ConfigParser()
 config.read("config.toml")
 if __name__ == "__main__":
     token = re.sub(r"\"", "", config["DEFAULT"]["token"])
-    bot_interface.run()
+    bot_interface.run(token)
