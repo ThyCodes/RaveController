@@ -75,7 +75,7 @@ def scene_setup():
             logging.info(f"Scene {LIVE_SCENE} created in OBS.")
         except OBSSDKRequestError:
             logging.warning("Scene {LIVE_SCENE} attempted to be created when already exists.")
-    set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE).scene_items
+    set_media_input = CL.get_scene_item_list(LIVE_SCENE).scene_items
     if "Set" not in set_media_input:
         settings = {
             "local_file": os.path.join(VIDEO_DIR, "current_set.mp4"),
