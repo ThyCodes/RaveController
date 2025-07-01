@@ -67,7 +67,7 @@ def scene_setup():
     if LIVE_SCENE not in scenes:
         CL.create_scene(LIVE_SCENE)
         logging.info(f"Scene {LIVE_SCENE} created in OBS.")
-    set_media_input = CL.get_scene_item_list(LIVE_SCENE)
+    set_media_input = CL.get_scene_item_list(scene_name=LIVE_SCENE)
     if "Set" not in set_media_input:
         settings = {
             "local_file": os.path.join(VIDEO_DIR, "current_set.mp4"),
