@@ -18,6 +18,7 @@ ARCHIVE_DIR = os.path.join(VIDEO_DIR, "archive")
 if not os.path.exists(ARCHIVE_DIR):
     os.makedirs(ARCHIVE_DIR)
 CURR_SET = "current_set"
+
 # Just makes editing filename easier on me
 
 def setup():
@@ -36,6 +37,13 @@ def setup():
     print("Default config file generated! Fill it out with whatever information you'd like, configure your OBS websocket, then run this file again to auto-generate the necessary scenes and sources!\n\nFor a more detailed explanation of what to do, check out the setup guide in the readme!")
     quit()
 
+config = configparser.ConfigParser()
+try:
+    config.read("config.toml")
+except FileNotFoundError:
+    setup()
+SWAP_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
+LIVE_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
 
 def scene_setup():
     # ALL UNTESTED
@@ -75,13 +83,8 @@ def scene_setup():
         except Exception as e:
             print(f"Error adding media source: {e}")
 
-config = configparser.ConfigParser()
-try:
-    config.read("config.toml")
-except FileNotFoundError:
-    setup()
-SWAP_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
-LIVE_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
+
+
 
 logging.basicConfig(
     filename="debug.log",
