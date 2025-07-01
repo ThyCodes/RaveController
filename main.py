@@ -1,6 +1,7 @@
 import obs_controller
 import bot_interface
 import configparser
+import re
 
 
 config = configparser.ConfigParser()

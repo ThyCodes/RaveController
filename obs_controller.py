@@ -83,11 +83,11 @@ def scene_setup():
         }
         try:
             CL.create_input(
-                scene_name = LIVE_SCENE,
-                input_name = "Set",
-                input_kind = "ffmpeg_source",
-                input_settings = settings,
-                scene_item_enabled = True
+                LIVE_SCENE,
+                "Set",
+                "ffmpeg_source",
+                settings,
+                True
             )
             logging.info(f"Set Media Input created in OBS scene {LIVE_SCENE}")
         except Exception as e:
