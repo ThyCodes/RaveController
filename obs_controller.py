@@ -39,15 +39,14 @@ def setup():
     quit()
 
 config = configparser.ConfigParser()
-try:
+if os.path.exists("config.toml"):
     config.read("config.toml")
-except FileNotFoundError:
+else:
     setup()
 SWAP_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "swap_scene"))
 LIVE_SCENE = re.sub(r"[^0-9A-Za-z ]", "", config.get("DEFAULT", "live_scene"))
 
 def scene_setup():
-    # ALL UNTESTED
     global SWAP_SCENE
     global LIVE_SCENE
     scenes = CL.get_scene_list().scenes
@@ -74,7 +73,7 @@ def scene_setup():
             CL.create_scene(LIVE_SCENE)
             logging.info(f"Scene {LIVE_SCENE} created in OBS.")
         except OBSSDKRequestError:
-            logging.warning("Scene {LIVE_SCENE} attempted to be created when already exists.")
+            logging.warning(f"Scene {LIVE_SCENE} attempted to be created when already exists.")
     set_media_input = CL.get_scene_item_list(LIVE_SCENE).scene_items
     if "Set" not in set_media_input:
         settings = {
