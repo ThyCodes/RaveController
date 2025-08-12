@@ -1,0 +1,9 @@
+[DEFAULT]
+token = "YOUR DISCORD BOT TOKEN HERE"
+live_scene = "SetScene"
+swap_scene = "BRBScene"
+
+[connection]
+password = "OBSWebsocketPasswordHere"
+host = "localhost"
+port = 4455
