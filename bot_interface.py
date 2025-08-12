@@ -352,6 +352,25 @@ async def remove_video(interaction: discord.Interaction, video:str):
     )
     await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=DELETE_AFTER)
 
+@bot.tree.command(name="reorder", description="Move a video in the queue to a new position")
+async def reorder_video(interaction: discord.Interaction, video:str, position:int):
+    # This is a really un-user friendly way of doing this, but I can't think of a way to make this better without really digging into discord.py
+    # Sorry!
+
+    try:
+        video = int(video)
+        await interaction.response.send_message("I'm sorry, please enter the filename and not its current position in the queue!")
+        return
+    except:
+        pass
+    
+    # Assumes mp4 is the filename in use
+    if not video.endswith(".mp4"):
+        video += ".mp4"
+    obs_controller.VO.reorder(video, position)
+        
+
+    
 
 
 

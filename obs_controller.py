@@ -273,6 +273,8 @@ def get_set_cursor():
 def resize_video_obj():
     """
     Resizes the video object in OBS to 1920x1080, regardless of the source resolution
+
+    THIS IS NOT IMPLEMENTED OR TESTED. LIKELY MADE WITH OUT OF DATE WEBHOOK METHODS
     """
     # In case more than just the video item is added to the scene
     resp = CL.get_scene_item_list(LIVE_SCENE)
@@ -293,9 +295,9 @@ def resize_video_obj():
     scale_y = 1080 / video_h
 
     CL.set_scene_item_transform(
-        scene_name=LIVE_SCENE,
-        scene_item_id=sid,
-        scene_item_transform={
+        LIVE_SCENE,
+        sid,
+        {
             "positionX": 0.0,
             "positionY": 0.0,
             "scaleX": scale_x,
@@ -385,6 +387,8 @@ def next_set():
     shutil.move(next_vid_path, current_vid_path)
     resize_video_obj()
     change_scene()
+    with open("current_set.txt", "w") as f:
+        f.write(next_vid)
     logging.info(f"Set changed to {next_vid}.")
 
 def pause_set():
